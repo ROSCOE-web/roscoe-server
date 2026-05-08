@@ -5,7 +5,7 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CORS — permite cualquier origen
+// CORS — permite GitHub Pages y cualquier origen
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -14,28 +14,43 @@ app.use(cors({
 app.options('*', cors());
 app.use(express.json());
 
+// Health check
 app.get('/', (req, res) => {
-  res.json({ status: 'Roscoe Club server running OK' });
+  res.json({ status: 'Roscoe Club server OK', version: '2.0' });
 });
 
+// Crear Payment Intent
 app.post('/create-payment-intent', async (req, res) => {
   try {
     const { amount, currency = 'mxn', customerName, customerEmail } = req.body;
-    if (!amount || amount < 1) return res.status(400).json({ error: 'Monto invalido' });
+
+    if (!amount || amount < 1) {
+      return res.status(400).json({ error: 'Monto invalido' });
+    }
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100),
+      amount: Math.round(amount * 100), // centavos
       currency,
       receipt_email: customerEmail || undefined,
-      description: `Roscoe Club — ${customerName || 'Cliente'}`,
-      metadata: { store: 'Roscoe Club', customer: customerName || '', email: customerEmail || '' },
+      description: `Roscoe Club - Pedido de ${customerName || 'Cliente'}`,
+      metadata: {
+        store: 'Roscoe Club',
+        customer: customerName || '',
+        email: customerEmail || '',
+      },
     });
 
-    res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+    });
+
   } catch (error) {
     console.error('Stripe error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
-app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Roscoe Club server corriendo en puerto ${PORT}`);
+});
